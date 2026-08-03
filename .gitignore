@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Environment Variables
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python Build
+build/
+dist/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Cache
+.cache/
+
+# SQLite
+*.db
+*.sqlite3
+
+# Secrets
+secrets/
+credentials.json
+
+# Learning Notes (your prep info)
+learning-prep/
+notes/
+study-notes/
+personal-notes/
+*.md.bak
