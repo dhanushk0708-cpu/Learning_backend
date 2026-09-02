@@ -1,0 +1,133 @@
+                 LOGIN
+                   │
+                   ▼
+        Username + Password
+                   │
+                   ▼
+             POST /login
+                   │
+                   ▼
+        OAuth2PasswordRequestForm
+                   │
+                   ▼
+             Login Service
+                   │
+             ┌─────┴─────┐
+             ▼           ▼
+       Find User    Verify Password
+             │           │
+             └─────┬─────┘
+                   ▼
+             Credentials OK?
+              /           \
+            NO             YES
+            │               │
+            ▼               ▼
+           401         Create JWT
+                            │
+                            ▼
+                       Return Token
+                            │
+                            ▼
+                       FRONTEND
+                            │
+                            │
+               Authorization: Bearer JWT
+                            │
+                            ▼
+                 Protected API Request
+                            │
+                            ▼
+                 OAuth2PasswordBearer
+                            │
+                            ▼
+                    get_current_user()
+                            │
+                            ▼
+                     Decode JWT
+                            │
+                            ▼
+                       Get user ID
+                            │
+                            ▼
+                     Find User
+                            │
+                            ▼
+                    Current User
+                            │
+                            ▼
+                    Protected Route
+                            │
+                            ▼
+                       Response
+
+PasswordHash
+→ Securely hashes passwords
+
+verify_password()
+→ Checks entered password against stored hash
+
+JWT
+→ Carries authenticated identity/claims
+
+jwt.encode()
+→ Creates token
+
+jwt.decode()
+→ Verifies + decodes token
+
+OAuth2PasswordBearer
+→ Extracts Bearer token from request
+
+get_current_user()
+→ Converts token → authenticated user
+
+Depends()
+→ FastAPI provides dependencies automatically
+
+Authentication
+→ Who are you?
+
+Authorization
+→ What are you allowed to do?
+
+401
+→ Authentication failure
+
+403
+→ Permission failure
+
+def require_role(required_role):
+
+    def role_checker(
+        user = Depends(get_current_user)
+    ):
+
+        if user.role != required_role:
+            raise ForbiddenError(
+                "You don't have permission",
+                "INSUFFICIENT_ROLE"
+            )
+
+        return user
+
+    return role_checker
+
+                     
+                     
+                     JWT
+                  ↓
+         get_current_user()
+                  ↓
+             Authenticated
+                User
+                  ↓
+         require_role("admin")
+                  ↓
+             role_checker
+                  ↓
+          user.role == admin?
+             /          \
+           YES           NO
+            ↓             ↓
+          Route          403
