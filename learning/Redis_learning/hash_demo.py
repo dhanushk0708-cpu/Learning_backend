@@ -14,7 +14,7 @@ client.hset(
         "priority": "high"
     }
 )
-
+client.expire("complaint:20", 60)
 complaint = client.hgetall("complaint:20")
 
 print(complaint)

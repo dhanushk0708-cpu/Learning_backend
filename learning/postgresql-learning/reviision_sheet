@@ -1,0 +1,1679 @@
+Absolutely. Before Redis, let's create **one master PostgreSQL + Alembic interview revision sheet** that you can keep in your notes and revise before interviews.
+
+# PostgreSQL + SQLAlchemy + Alembic
+
+## Complete Interview Revision Sheet
+
+---
+
+# 1. PostgreSQL Basics
+
+### What is PostgreSQL?
+
+PostgreSQL is an **open-source relational database management system (RDBMS)** designed for production applications, with strong support for:
+
+* SQL
+* Transactions
+* Concurrency
+* Constraints
+* Indexes
+* JSON/JSONB
+* Extensions
+* Advanced querying
+* Roles and permissions
+
+### PostgreSQL vs SQLite
+
+| PostgreSQL                          | SQLite                                       |
+| ----------------------------------- | -------------------------------------------- |
+| Client-server DB                    | Embedded/file-based DB                       |
+| Designed for production workloads   | Lightweight/local applications               |
+| Better concurrent workload handling | Limited concurrency compared with PostgreSQL |
+| Rich indexing/features              | Simpler                                      |
+| Extensions                          | More limited                                 |
+| Roles/permissions                   | Much simpler                                 |
+| Excellent for backend APIs          | Excellent for prototypes/testing/small apps  |
+
+**Interview line:**
+
+> PostgreSQL is generally preferred for production backend systems requiring concurrency, scalability, transactions, security, and richer database features.
+
+---
+
+# 2. Database Structure
+
+```text
+Database
+   ↓
+Schema
+   ↓
+Tables
+   ↓
+Rows
+   ↓
+Columns
+```
+
+### Table
+
+Stores related data.
+
+```text
+users
+----------------
+id
+username
+role
+email
+```
+
+### Row
+
+One record.
+
+```text
+1 | dhanush | citizen | ...
+```
+
+### Column
+
+One attribute of the record.
+
+---
+
+# 3. Primary Key
+
+A **Primary Key (PK)** uniquely identifies each row.
+
+Properties:
+
+* Unique
+* Cannot be `NULL`
+* One primary-key constraint per table
+* Commonly an integer/UUID
+
+Example:
+
+```sql
+id SERIAL PRIMARY KEY
+```
+
+Interview:
+
+> A primary key uniquely identifies a record in a table and doesn't allow duplicate or NULL values.
+
+---
+
+# 4. Foreign Key
+
+A **Foreign Key (FK)** references a key in another table.
+
+```sql
+owner_id INTEGER
+REFERENCES users(id)
+```
+
+Meaning:
+
+```text
+complaints.owner_id
+        ↓
+users.id
+```
+
+It maintains **referential integrity**.
+
+Example:
+
+```text
+users
+id
+1
+2
+
+complaints
+id    owner_id
+10       1
+11       1
+12       2
+```
+
+One user can have multiple complaints.
+
+---
+
+# 5. Normalization
+
+Instead of storing:
+
+```text
+complaint
+title
+username
+user_email
+user_role
+```
+
+repeatedly for every complaint, separate the data:
+
+```text
+users
+  ↓
+user information
+
+complaints
+  ↓
+complaint information
+```
+
+and connect them using:
+
+```text
+owner_id
+```
+
+Benefits:
+
+* Less duplication
+* Better consistency
+* Easier updates
+* Cleaner relationships
+
+---
+
+# 6. SQLAlchemy ORM
+
+### What is ORM?
+
+ORM = **Object-Relational Mapping**
+
+It maps:
+
+```text
+Python objects
+      ↕
+Database tables/rows
+```
+
+SQLAlchemy allows us to work with Python objects while generating SQL behind the scenes.
+
+Example:
+
+```python
+complaint = Complaint(
+    title="Broken road",
+    owner_id=1
+)
+
+db.add(complaint)
+db.commit()
+```
+
+SQLAlchemy communicates with PostgreSQL using SQL.
+
+### Interview answer
+
+> ORM allows application code to work with database data as objects instead of manually writing SQL for every operation.
+
+---
+
+# 7. SQLAlchemy Model
+
+Typical model:
+
+```python
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    username: Mapped[str] = mapped_column(
+        String(100)
+    )
+
+    role: Mapped[str] = mapped_column(
+        String(50)
+    )
+```
+
+### `Base`
+
+Base class used by SQLAlchemy ORM models.
+
+```python
+class Base(DeclarativeBase):
+    pass
+```
+
+SQLAlchemy collects model metadata through `Base.metadata`.
+
+---
+
+# 8. Engine
+
+```python
+engine = create_engine(DATABASE_URL)
+```
+
+The Engine is SQLAlchemy's **database connectivity layer**.
+
+It manages:
+
+* Database connectivity
+* Connection pool
+* Communication between SQLAlchemy and PostgreSQL
+
+Don't simply say:
+
+> Engine = database connection
+
+Better:
+
+> Engine manages database connectivity and reusable connections.
+
+---
+
+# 9. Session
+
+```python
+SessionLocal = sessionmaker(bind=engine)
+
+db = SessionLocal()
+```
+
+A Session is the **working unit for ORM database operations**.
+
+It handles:
+
+* Queries
+* Inserts
+* Updates
+* Deletes
+* Object tracking
+* Transactions
+* Commit
+* Rollback
+
+### Mental model
+
+```text
+Engine
+   ↓
+Connection infrastructure
+
+Session
+   ↓
+Actual ORM work
+```
+
+---
+
+# 10. `add()`
+
+```python
+db.add(complaint)
+```
+
+Adds an object to the Session.
+
+It doesn't necessarily mean the data is already committed to PostgreSQL.
+
+Mental model:
+
+```text
+Python object
+     ↓
+Session
+     ↓
+pending change
+```
+
+---
+
+# 11. `flush()`
+
+```python
+db.flush()
+```
+
+Sends pending changes from the Session to the database **without committing the transaction**.
+
+Useful when you need database-generated values, such as:
+
+```python
+db.add(complaint)
+db.flush()
+
+print(complaint.id)
+```
+
+### Remember
+
+```text
+flush → send changes to DB
+commit → commit transaction
+```
+
+---
+
+# 12. `commit()`
+
+```python
+db.commit()
+```
+
+Commits the current transaction.
+
+This is what makes the transaction durable.
+
+```text
+add
+ ↓
+flush
+ ↓
+commit
+```
+
+---
+
+# 13. `rollback()`
+
+```python
+db.rollback()
+```
+
+Rolls back the current transaction.
+
+Used when an operation fails.
+
+```python
+try:
+    db.commit()
+except Exception:
+    db.rollback()
+    raise
+```
+
+Important:
+
+After a failed transaction, the Session generally needs `rollback()` before continuing database work.
+
+---
+
+# 14. `refresh()`
+
+```python
+db.refresh(complaint)
+```
+
+Reloads the object's current state from the database.
+
+Useful when PostgreSQL generated or changed values.
+
+---
+
+# 15. `get()`
+
+```python
+user = db.get(User, 1)
+```
+
+Used primarily for **primary-key lookup**.
+
+Equivalent conceptually to:
+
+```sql
+SELECT ...
+FROM users
+WHERE id = 1;
+```
+
+---
+
+# 16. `select()` + `where()`
+
+```python
+statement = select(User).where(
+    User.username == "dhanush"
+)
+
+user = db.scalar(statement)
+```
+
+Used for more flexible queries.
+
+You can add:
+
+* Filters
+* Sorting
+* Pagination
+* Joins
+* Aggregation
+
+---
+
+# 17. `scalar()` vs `scalars()`
+
+### `scalar()`
+
+Extracts one scalar result.
+
+```python
+user = db.scalar(statement)
+```
+
+Commonly used for:
+
+* One ORM object
+* Aggregate value
+
+### `scalars()`
+
+Used when the result contains ORM objects.
+
+```python
+users = db.scalars(statement).all()
+```
+
+Returns multiple ORM objects.
+
+### Interview shortcut
+
+```text
+scalar()  → one scalar result
+scalars() → ORM objects from rows
+```
+
+For strict single-result expectations, methods such as `scalar_one()` can enforce that exactly one row exists.
+
+---
+
+# 18. WHERE
+
+Filters **individual rows before grouping**.
+
+```python
+select(Complaint).where(
+    Complaint.priority_score > 5
+)
+```
+
+Think:
+
+```text
+Rows
+ ↓
+WHERE
+ ↓
+Filtered rows
+```
+
+---
+
+# 19. AND
+
+Multiple conditions inside `where()` are AND conditions.
+
+```python
+select(Complaint).where(
+    Complaint.status == "open",
+    Complaint.owner_id == 3
+)
+```
+
+Means:
+
+```text
+status = open
+AND
+owner_id = 3
+```
+
+---
+
+# 20. OR
+
+Using:
+
+```python
+from sqlalchemy import or_
+
+select(Complaint).where(
+    or_(
+        Complaint.status == "open",
+        Complaint.status == "pending"
+    )
+)
+```
+
+Means:
+
+```text
+status = open
+OR
+status = pending
+```
+
+---
+
+# 21. ORDER BY
+
+Sort results.
+
+```python
+from sqlalchemy import desc
+
+statement = (
+    select(Complaint)
+    .order_by(desc(Complaint.id))
+)
+```
+
+Common:
+
+```text
+asc()  → ascending
+desc() → descending
+```
+
+---
+
+# 22. Pagination
+
+Don't return 1 million records at once.
+
+Use:
+
+```python
+.limit(20)
+.offset(40)
+```
+
+Formula:
+
+```text
+offset = (page - 1) × limit
+```
+
+For:
+
+```text
+page = 3
+limit = 20
+```
+
+```text
+offset = (3 - 1) × 20
+       = 40
+```
+
+So:
+
+```python
+.limit(20).offset(40)
+```
+
+### Large datasets
+
+For very large datasets, **keyset/cursor pagination** can be more efficient than large offsets.
+
+---
+
+# 23. Aggregate Functions
+
+SQLAlchemy:
+
+```python
+from sqlalchemy import func
+```
+
+### COUNT
+
+```python
+select(
+    func.count()
+).select_from(Complaint)
+```
+
+### SUM
+
+```python
+select(
+    func.sum(Complaint.priority_score)
+)
+```
+
+### AVG
+
+```python
+select(
+    func.avg(Complaint.priority_score)
+)
+```
+
+Also:
+
+```text
+MIN
+MAX
+```
+
+---
+
+# 24. GROUP BY
+
+Groups rows based on a column.
+
+```python
+statement = (
+    select(
+        Complaint.status,
+        func.count()
+    )
+    .group_by(Complaint.status)
+)
+```
+
+Result conceptually:
+
+```text
+open      20
+pending   15
+closed    50
+```
+
+---
+
+# 25. HAVING
+
+`HAVING` filters **groups after GROUP BY**.
+
+```python
+.group_by(Complaint.status)
+.having(func.count() > 10)
+```
+
+### Remember forever
+
+```text
+WHERE
+→ filters rows
+
+HAVING
+→ filters groups
+```
+
+---
+
+# 26. JOIN
+
+JOIN combines related data from multiple tables.
+
+```sql
+JOIN users
+ON complaints.owner_id = users.id
+```
+
+Means:
+
+```text
+complaints.owner_id
+        ↓
+matches
+        ↓
+users.id
+```
+
+Example:
+
+```text
+Complaint       User
+Broken road  →  dhanush
+Garbage      →  mohan
+```
+
+Common joins:
+
+```text
+INNER JOIN
+LEFT JOIN
+RIGHT JOIN
+FULL OUTER JOIN
+```
+
+---
+
+# 27. SQLAlchemy Relationships
+
+Two important concepts:
+
+### ForeignKey
+
+```python
+owner_id = mapped_column(
+    ForeignKey("users.id")
+)
+```
+
+**Database-level relationship.**
+
+### relationship()
+
+```python
+owner = relationship(
+    "User",
+    back_populates="complaints"
+)
+```
+
+**Python/ORM-level navigation.**
+
+Example:
+
+```python
+complaint.owner
+```
+
+and:
+
+```python
+user.complaints
+```
+
+### Remember:
+
+```text
+ForeignKey
+→ database connection
+
+relationship()
+→ Python/ORM navigation
+```
+
+---
+
+# 28. One-to-Many
+
+One user can have many complaints:
+
+```text
+User
+ ↓
+Complaint
+Complaint
+Complaint
+```
+
+Example:
+
+```python
+user.complaints
+```
+
+returns multiple Complaint objects.
+
+---
+
+# 29. N+1 Query Problem
+
+Example:
+
+```python
+complaints = db.scalars(
+    select(Complaint)
+).all()
+
+for complaint in complaints:
+    print(complaint.owner.username)
+```
+
+Potentially:
+
+```text
+1 query
+→ fetch 100 complaints
+
+100 queries
+→ fetch owners individually
+
+Total = 101 queries
+```
+
+That's N+1.
+
+### Why bad?
+
+More database round trips → worse performance.
+
+### Common solution
+
+Eager loading:
+
+```python
+select(Complaint).options(
+    selectinload(Complaint.owner)
+)
+```
+
+Other strategy:
+
+```python
+joinedload()
+```
+
+---
+
+# 30. Index
+
+An index is a **data structure used to speed up data lookup**.
+
+Example:
+
+```sql
+CREATE INDEX idx_complaints_owner_id
+ON complaints(owner_id);
+```
+
+Without suitable index:
+
+```text
+Potential table scan
+```
+
+With index:
+
+```text
+Index
+ ↓
+Find matching rows efficiently
+```
+
+### But indexes aren't free
+
+They:
+
+* Consume storage
+* Add write-maintenance cost
+* Can slow INSERT/UPDATE/DELETE
+* Aren't useful on every column
+
+### Interview answer
+
+> An index improves read performance for suitable queries by allowing the database to locate rows efficiently, but it has storage and write-maintenance costs.
+
+---
+
+# 31. Composite Index
+
+Index on multiple columns.
+
+Example:
+
+```sql
+CREATE INDEX idx_complaints_owner_status
+ON complaints(owner_id, status);
+```
+
+Useful when queries frequently filter using those columns together.
+
+Order matters for composite indexes.
+
+---
+
+# 32. Transactions
+
+A transaction groups multiple operations into one logical unit.
+
+Example:
+
+```text
+Create complaint
+Create assignment
+Deduct quota
+```
+
+All should succeed or all should fail.
+
+```text
+Success
+ ↓
+COMMIT
+
+Failure
+ ↓
+ROLLBACK
+```
+
+---
+
+# 33. ACID
+
+### A — Atomicity
+
+All or nothing.
+
+### C — Consistency
+
+Database moves from one valid state to another.
+
+### I — Isolation
+
+Concurrent transactions don't improperly interfere with each other.
+
+### D — Durability
+
+Committed data survives failures according to the database's durability guarantees.
+
+### Interview shortcut
+
+> Atomicity is responsible for the “all or nothing” behavior.
+
+---
+
+# 34. MVCC
+
+MVCC = **Multi-Version Concurrency Control**
+
+PostgreSQL maintains multiple row versions to allow transactions to work concurrently with less blocking.
+
+Mental model:
+
+```text
+Transaction A
+    ↓
+reads version
+
+Transaction B
+    ↓
+creates newer version
+```
+
+MVCC helps provide:
+
+* Concurrent access
+* Consistent reads
+* Less unnecessary blocking
+
+---
+
+# 35. Isolation Levels
+
+Important PostgreSQL levels:
+
+```text
+READ COMMITTED
+REPEATABLE READ
+SERIALIZABLE
+```
+
+### READ COMMITTED
+
+PostgreSQL's default.
+
+Each statement gets its own snapshot.
+
+Therefore:
+
+```text
+Transaction A:
+SELECT → old view
+
+Transaction B:
+UPDATE + COMMIT
+
+Transaction A:
+SELECT again → can see committed update
+```
+
+### REPEATABLE READ
+
+Transaction maintains a consistent snapshot.
+
+```text
+A starts
+ ↓
+snapshot
+ ↓
+A SELECT → old view
+
+B UPDATE + COMMIT
+
+A SELECT again
+ ↓
+same consistent snapshot
+```
+
+### Remember
+
+```text
+READ COMMITTED
+→ snapshot per statement
+
+REPEATABLE READ
+→ consistent transaction-level snapshot
+```
+
+---
+
+# 36. Connection Pooling
+
+Instead of:
+
+```text
+Request
+ ↓
+create DB connection
+ ↓
+query
+ ↓
+close connection
+```
+
+we use a pool:
+
+```text
+Connection Pool
+ ↓
+borrow connection
+ ↓
+query
+ ↓
+return connection
+```
+
+Benefits:
+
+* Less connection creation overhead
+* Better performance
+* Better scalability
+* Reduced pressure on PostgreSQL
+
+Important:
+
+> The connection is returned to the pool; the Session is not simply “reused.”
+
+---
+
+# 37. Views
+
+A View is a **saved database query** that behaves like a virtual table.
+
+Useful when we want a reusable representation of data without storing another copy of the underlying rows.
+
+Example concept:
+
+```text
+complaints
+    +
+users
+    ↓
+complaint_details view
+```
+
+---
+
+# 38. PostgreSQL `EXPLAIN`
+
+Used to understand how PostgreSQL plans to execute a query.
+
+```sql
+EXPLAIN
+SELECT ...
+```
+
+For actual execution information:
+
+```sql
+EXPLAIN ANALYZE
+SELECT ...
+```
+
+Useful for finding:
+
+* Sequential scans
+* Index scans
+* Join strategies
+* Estimated vs actual execution behavior
+* Performance bottlenecks
+
+---
+
+# 39. PostgreSQL Roles & Permissions
+
+PostgreSQL supports roles for controlling access.
+
+Concept:
+
+```text
+Role
+ ↓
+Permissions
+ ↓
+Database/schema/table operations
+```
+
+Examples of privileges:
+
+```text
+SELECT
+INSERT
+UPDATE
+DELETE
+```
+
+Production systems should follow the **principle of least privilege**.
+
+---
+
+# 40. JSONB
+
+PostgreSQL supports `JSONB` for storing JSON data in a binary/decomposed form that supports efficient querying and indexing.
+
+Useful for flexible/semi-structured data.
+
+Example concept:
+
+```json
+{
+    "department": "BBMP",
+    "priority": "high"
+}
+```
+
+Use normal relational columns when the data has a stable relational structure; use JSONB when flexibility is genuinely useful.
+
+---
+
+# 41. Alembic
+
+Alembic is a **database migration tool for SQLAlchemy**.
+
+It tracks changes to database schema over time.
+
+Example:
+
+```text
+Version 1
+users
+ ↓
+Version 2
+users + email
+ ↓
+Version 3
+users + email + phone
+```
+
+---
+
+# 42. Alembic Professional Workflow
+
+When model changes:
+
+### Step 1
+
+Change SQLAlchemy model.
+
+### Step 2
+
+Generate migration:
+
+```cmd
+alembic revision --autogenerate -m "add email to users"
+```
+
+### Step 3
+
+**Review migration file.**
+
+Never blindly trust autogenerated migrations.
+
+### Step 4
+
+Apply:
+
+```cmd
+alembic upgrade head
+```
+
+Flow:
+
+```text
+Model change
+     ↓
+revision --autogenerate
+     ↓
+Review migration
+     ↓
+upgrade head
+     ↓
+PostgreSQL updated
+```
+
+---
+
+# 43. Alembic `upgrade` vs `downgrade`
+
+### Upgrade
+
+Move database schema forward:
+
+```cmd
+alembic upgrade head
+```
+
+### Downgrade
+
+Move schema backward:
+
+```cmd
+alembic downgrade -1
+```
+
+Migration example:
+
+```python
+def upgrade():
+    op.add_column(...)
+
+def downgrade():
+    op.drop_column(...)
+```
+
+So:
+
+```text
+upgrade
+→ add email
+
+downgrade
+→ remove email
+```
+
+---
+
+# 44. Alembic Baseline
+
+If a database already exists before Alembic starts tracking it, you can establish a baseline.
+
+Concept:
+
+```text
+Existing PostgreSQL schema
+        ↓
+Alembic baseline
+        ↓
+stamp head
+```
+
+Important:
+
+```cmd
+alembic stamp head
+```
+
+**marks a revision as applied without executing its migration operations.**
+
+This is useful when the database schema already matches the intended baseline.
+
+---
+
+# 45. Repository Layer
+
+Repository handles **database access**.
+
+Example:
+
+```python
+class ComplaintRepository:
+
+    def get_by_id(self, complaint_id):
+        return self.db.get(
+            Complaint,
+            complaint_id
+        )
+```
+
+Repository responsibilities:
+
+* Query database
+* Insert
+* Update
+* Delete
+* Persistence logic
+
+Repository should not contain complex business rules.
+
+---
+
+# 46. Service Layer
+
+Service handles **business logic/rules**.
+
+Example:
+
+```python
+if complaint.owner_id != current_user.id:
+    raise ForbiddenError(...)
+```
+
+This belongs in Service because:
+
+> “A citizen can only update their own complaint.”
+
+is a business/authorization rule.
+
+---
+
+# 47. Router Layer
+
+Router handles HTTP.
+
+Responsibilities:
+
+* HTTP method
+* URL
+* Request
+* Response
+* Status codes
+* Dependency injection
+
+Example:
+
+```text
+PUT /complaints/123
+```
+
+---
+
+# 48. Dependency Injection
+
+FastAPI uses:
+
+```python
+Depends()
+```
+
+to provide dependencies.
+
+Example:
+
+```python
+current_user = Depends(get_current_user)
+```
+
+Dependencies can provide:
+
+* DB Session
+* Current user
+* Repository
+* Service
+* Authentication information
+
+---
+
+# 49. Complete Backend Flow
+
+This is one of the **most important interview diagrams**:
+
+```text
+HTTP Request
+     ↓
+Router
+     ↓
+Dependency
+     ↓
+Service
+     ↓
+Repository
+     ↓
+SQLAlchemy
+     ↓
+PostgreSQL
+```
+
+### Responsibilities
+
+```text
+Router
+→ HTTP
+
+Dependency
+→ provide required objects/context
+
+Service
+→ business rules
+
+Repository
+→ database operations
+
+SQLAlchemy
+→ ORM/database communication
+
+PostgreSQL
+→ persistence
+```
+
+---
+
+# 50. Complete Civil AI Example
+
+Request:
+
+```http
+PUT /complaints/123
+```
+
+Flow:
+
+```text
+Client
+ ↓
+Router
+ ↓
+JWT Dependency
+ ↓
+Current User
+ ↓
+Service
+ ↓
+Get complaint 123
+ ↓
+Check ownership
+ ↓
+Repository
+ ↓
+SQLAlchemy
+ ↓
+PostgreSQL
+ ↓
+Update complaint 123
+ ↓
+Response
+```
+
+If ownership fails:
+
+```text
+Service
+ ↓
+owner_id != current_user.id
+ ↓
+403 Forbidden
+```
+
+---
+
+# 51. Authentication vs Authorization vs Ownership
+
+### Authentication
+
+**WHO are you?**
+
+Usually JWT/token.
+
+### Authorization
+
+**What are you allowed to do?**
+
+Example:
+
+```text
+admin → delete complaints
+citizen → create/update own complaints
+```
+
+### Ownership
+
+**Does this specific resource belong to you?**
+
+Example:
+
+```text
+complaint.owner_id == current_user.id
+```
+
+### Remember
+
+```text
+Authentication
+→ WHO
+
+Authorization
+→ WHAT
+
+Ownership
+→ IS IT YOUR RESOURCE?
+```
+
+---
+
+# 52. HTTP Status Codes
+
+Important backend interview codes:
+
+```text
+200 → OK
+201 → Created
+204 → No Content
+
+400 → Bad Request
+401 → Unauthenticated / invalid authentication
+403 → Forbidden
+404 → Not Found
+409 → Conflict
+422 → Validation error
+
+500 → Internal Server Error
+```
+
+Remember:
+
+```text
+401 → authentication problem
+403 → authenticated but not allowed
+```
+
+---
+
+# 53. Most Important Interview One-Liners
+
+### ORM
+
+> ORM maps application objects to relational database structures.
+
+### Engine
+
+> Engine manages database connectivity and connection pooling.
+
+### Session
+
+> Session is the working unit for ORM operations and transaction management.
+
+### Flush
+
+> Flush sends pending changes to the database without committing the transaction.
+
+### Commit
+
+> Commit commits the current transaction.
+
+### Rollback
+
+> Rollback undoes the current uncommitted transaction and resets the failed transaction state.
+
+### Primary Key
+
+> Uniquely identifies a row.
+
+### Foreign Key
+
+> References a key in another table and maintains referential integrity.
+
+### Index
+
+> Data structure that improves lookup performance at storage and write-maintenance cost.
+
+### Transaction
+
+> Groups multiple operations into one atomic unit.
+
+### MVCC
+
+> PostgreSQL's multi-version concurrency mechanism that enables concurrent transactions with consistent reads and reduced blocking.
+
+### Alembic
+
+> Database migration tool used to version and apply SQLAlchemy schema changes.
+
+### Repository
+
+> Handles database access.
+
+### Service
+
+> Handles business logic.
+
+### Router
+
+> Handles HTTP communication.
+
+---
+
+# 🔥 10 Questions You MUST Be Able to Answer
+
+Before an interview, make sure you can explain these **without looking at notes**:
+
+1. **What is ORM and why use SQLAlchemy?**
+2. **Engine vs Session?**
+3. **`flush()` vs `commit()` vs `rollback()` vs `refresh()`?**
+4. **Primary Key vs Foreign Key?**
+5. **What is an index and when can it hurt?**
+6. **What is a transaction and what does ACID mean?**
+7. **What is N+1 and how do you solve it?**
+8. **What is MVCC?**
+9. **How does Alembic migration workflow work?**
+10. **Explain Router → Dependency → Service → Repository → SQLAlchemy → PostgreSQL.**
+
+If you can answer those naturally and write the basic code yourself, you're in a **strong position for PostgreSQL/SQLAlchemy backend interview questions**.
+
+### Your PostgreSQL learning status
+
+```text
+PostgreSQL fundamentals       ✅
+SQLAlchemy ORM                 ✅
+Queries                        ✅
+Relationships                  ✅
+Indexes                        ✅
+Transactions / ACID            ✅
+MVCC / isolation               ✅
+Connection pooling             ✅
+Performance basics             ✅
+Architecture                   ✅
+Alembic                        ✅
+Practical migration            ✅
+Interview revision             ✅
+```
+
+**Keep this as your master revision sheet.** When we reach interview preparation later, we can use this as the base instead of relearning PostgreSQL from scratch.
