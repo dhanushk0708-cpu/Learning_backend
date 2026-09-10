@@ -1,10 +1,5 @@
-Absolutely. Before Redis, let's create **one master PostgreSQL + Alembic interview revision sheet** that you can keep in your notes and revise before interviews.
 
-# PostgreSQL + SQLAlchemy + Alembic
 
-## Complete Interview Revision Sheet
-
----
 
 # 1. PostgreSQL Basics
 
@@ -1641,9 +1636,9 @@ Remember:
 
 ---
 
-# 🔥 10 Questions You MUST Be Able to Answer
+# 🔥 10 Questions You MUST 
 
-Before an interview, make sure you can explain these **without looking at notes**:
+
 
 1. **What is ORM and why use SQLAlchemy?**
 2. **Engine vs Session?**
@@ -1656,9 +1651,6 @@ Before an interview, make sure you can explain these **without looking at notes*
 9. **How does Alembic migration workflow work?**
 10. **Explain Router → Dependency → Service → Repository → SQLAlchemy → PostgreSQL.**
 
-If you can answer those naturally and write the basic code yourself, you're in a **strong position for PostgreSQL/SQLAlchemy backend interview questions**.
-
-### Your PostgreSQL learning status
 
 ```text
 PostgreSQL fundamentals       ✅
@@ -1676,4 +1668,4 @@ Practical migration            ✅
 Interview revision             ✅
 ```
 
-**Keep this as your master revision sheet.** When we reach interview preparation later, we can use this as the base instead of relearning PostgreSQL from scratch.
+
