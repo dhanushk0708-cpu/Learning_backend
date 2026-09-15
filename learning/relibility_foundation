@@ -1,0 +1,59 @@
+                 CLIENT REQUEST
+                       │
+                       ▼
+              External Dependency
+                       │
+                 ┌─────┴─────┐
+                 │           │
+              Success      Failure
+                 │           │
+                 ▼           ▼
+               DONE       TIMEOUT
+                             │
+                             ▼
+                       Retry allowed?
+                        │          │
+                       YES         NO
+                        │           │
+                        ▼           ▼
+                   Backoff      Fail/Fallback
+                        │
+                        ▼
+                  Retry attempt
+                        │
+                 Repeated failures?
+                    │           │
+                   NO          YES
+                    │           │
+                    ▼           ▼
+                  DONE    Circuit OPEN
+                              │
+                              ▼
+                       Stop calling dependency
+                              │
+                              ▼
+                         Graceful fallback
+                              │
+                              ▼
+                          Wait period
+                              │
+                              ▼
+                        HALF-OPEN
+                         │       │
+                       Test    Test fails
+                         │       │
+                        YES      NO
+                         ▼        ▼
+                     CLOSED     OPEN
+                     
+                     
+                     | Concept                  | One-line answer                                                                                                                                                                                    |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Timeout**              | Stops waiting for a slow/unresponsive dependency after a defined time.                                                                                                                             |
+| **Retry**                | Tries a failed operation again when the failure may be temporary.                                                                                                                                  |
+| **Exponential Backoff**  | Waits progressively longer between retries to avoid overwhelming a failing service.                                                                                                                |
+| **Idempotency**          | Ensures repeating the same request produces the same final result without unwanted duplicates.                                                                                                     |
+| **Circuit Breaker**      | Stops sending requests to a repeatedly failing dependency to protect your system.                                                                                                                  |
+| **Graceful Degradation** | Keeps core functionality working by reducing/temporarily disabling non-critical features when a dependency fails.                                                                                  |
+| **When to use each**     | Timeout → slow dependency; Retry → temporary failure; Backoff → space retries; Idempotency → safe retries; Circuit Breaker → repeated failures; Graceful Degradation → keep core system available. |
+| **Interview point**      | Reliable systems expect failures and use timeouts, controlled retries, idempotency, circuit breakers, and fallbacks to prevent cascading failures.                                                 |

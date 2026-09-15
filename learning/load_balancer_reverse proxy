@@ -1,0 +1,169 @@
+
+
+## 📄 Production Backend / System Design — Revision Sheet
+
+| Concept                | One-line answer                                                                                     |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| **DNS**                | Converts a domain name such as `api.civilai.com` into the address of the infrastructure serving it. |
+| **HTTP**               | Protocol used for request-response communication between clients and servers.                       |
+| **HTTPS**              | HTTP protected by TLS encryption.                                                                   |
+| **TLS**                | Provides encryption, integrity, and server authentication for network communication.                |
+| **Reverse Proxy**      | Acts as the front door and forwards client requests to internal backend services.                   |
+| **Load Balancer**      | Distributes incoming requests across multiple healthy backend instances.                            |
+| **Horizontal Scaling** | Handles more traffic by adding more server instances.                                               |
+| **Vertical Scaling**   | Handles more traffic by making one server more powerful.                                            |
+| **Liveness Check**     | Checks whether a service/process is alive.                                                          |
+| **Readiness Check**    | Checks whether a service is actually ready to receive traffic.                                      |
+| **JWT**                | A signed credential the client can send so servers can verify the user's identity/claims.           |
+| **Stateless JWT Auth** | Each server verifies the JWT without needing to maintain a login session for every request.         |
+| **Redis**              | Fast shared storage commonly used for caching, rate limits, sessions, and job brokering.            |
+| **Celery**             | Executes background jobs using workers and a message broker such as Redis.                          |
+| **Connection Pool**    | Reuses database connections instead of creating a new connection for every request.                 |
+| **Service Layer**      | Contains application/business logic.                                                                |
+| **Repository Layer**   | Encapsulates database access.                                                                       |
+| **PostgreSQL**         | Durable relational database used for persistent application data.                                   |
+
+---
+
+# 🧠 One Big Request Flowchart
+
+This is the **main mental model** to remember:
+
+```text
+                         USER / CLIENT
+                              │
+                              │
+                              ▼
+                    ┌──────────────────┐
+                    │       DNS        │
+                    │ Domain → Address │
+                    └────────┬─────────┘
+                             │
+                             ▼
+                    ┌──────────────────┐
+                    │   HTTPS / TLS    │
+                    │ Secure transport │
+                    └────────┬─────────┘
+                             │
+                             ▼
+              ┌──────────────────────────────┐
+              │ Reverse Proxy / Load Balancer│
+              │                              │
+              │ TLS • Routing • Traffic     │
+              │ distribution • Health checks│
+              └──────────────┬───────────────┘
+                             │
+                    ┌────────┼────────┐
+                    ▼        ▼        ▼
+                FastAPI 1 FastAPI 2 FastAPI 3
+                    │        │        │
+                    └────────┼────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │   Middleware    │
+                    │ Logging / CORS  │
+                    │ etc.            │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Authentication  │
+                    │ Verify JWT      │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │     Router      │
+                    │ HTTP endpoint   │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │     Service     │
+                    │ Business Logic  │
+                    └───────┬─┬───────┘
+                            │ │
+                ┌───────────┘ └────────────┐
+                ▼                          ▼
+       ┌─────────────────┐        ┌─────────────────┐
+       │   Repository    │        │      Redis      │
+       │   DB Access     │        │ Cache / State   │
+       └────────┬────────┘        └─────────────────┘
+                │
+                ▼
+       ┌─────────────────┐
+       │   DB Connection │
+       │      Pool       │
+       └────────┬────────┘
+                │
+                ▼
+       ┌─────────────────┐
+       │   PostgreSQL    │
+       │ Persistent Data │
+       └─────────────────┘
+
+
+          HEAVY / ASYNC WORK
+                 │
+                 ▼
+          ┌─────────────┐
+          │    Celery   │
+          │   Producer  │
+          └──────┬──────┘
+                 │
+                 ▼
+          ┌─────────────┐
+          │    Redis    │
+          │    Broker   │
+          └──────┬──────┘
+                 │
+                 ▼
+          ┌─────────────┐
+          │   Celery    │
+          │   Worker    │
+          └──────┬──────┘
+                 │
+                 ▼
+          AI / Heavy Processing
+                 │
+                 ▼
+             PostgreSQL
+```
+
+### 🔗 How the concepts connect
+
+```text
+DNS
+ ↓
+Networking
+ ↓
+HTTPS / TLS
+ ↓
+Reverse Proxy
+ ↓
+Load Balancer
+ ↓
+Horizontal Scaling
+ ↓
+FastAPI
+ ↓
+Authentication
+ ↓
+Service
+ ↓
+Repository
+ ↓
+Connection Pool
+ ↓
+PostgreSQL
+```
+
+And alongside it:
+
+```text
+FastAPI
+ ├──→ Redis → Cache / Rate Limiting / Shared State
+ │
+ └──→ Celery → Redis Broker → Workers → Heavy/AI Work
+```
