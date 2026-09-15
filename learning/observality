@@ -1,0 +1,11 @@
+🔍 Observability
+Concept	One-line answer
+Logs	Tell you what happened.
+Metrics	Tell you how much, how often, and how fast.
+Traces	Show where a particular request spent its time.
+Latency	Measures how long a request takes.
+Traffic	Measures how much workload is arriving.
+Error Rate	Measures how many requests are failing.
+Saturation	Shows how close a resource is to its capacity.
+Alerting	Automatically notifies engineers when important conditions cross thresholds.
+
